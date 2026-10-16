@@ -4,6 +4,8 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Coletor de Estoque CD - Pague Menos & Extrafarma</title>
+<!-- Biblioteca SheetJS (xlsx) para gerar planilhas reais do Excel -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 :root {
   --bg: #0a0e17;
@@ -366,16 +368,16 @@ footer strong { color: #60a5fa; }
 
     <div class="input-group" style="margin-bottom:0">
       <label for="barcodeInput">EAN do Produto (Ex: 10*EAN):</label>
-      <form id="barcodeForm" class="barcode-form" action="javascript:void(0);">
+      <div class="barcode-form">
         <input type="text" id="barcodeInput" inputmode="numeric" placeholder="Toque para digitar ou bipe..." autocomplete="off" />
-        <button type="submit">+</button>
-      </form>
+        <button type="button" id="addBarcodeBtn">+</button>
+      </div>
       <div id="feedback"></div>
       <div class="last-bip" id="lastBip"></div>
       <div class="card-header" style="margin-top:12px; margin-bottom:0;">
         <label class="switch-label">
           <div class="switch"><input type="checkbox" id="soundToggle" checked /><span class="slider"></span></div>
-          <span>Bip Sonoro</span>
+          <span>Bip Sonoro (Com alertas para Envelopados)</span>
         </label>
         <button class="btn-secondary btn-sm" id="undoBtn" disabled title="Atalho: F2 ou Ctrl+Z">
           <svg style="width:14px;height:14px;fill:currentColor" viewBox="0 0 24 24"><path d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z"/></svg>
@@ -403,7 +405,7 @@ footer strong { color: #60a5fa; }
     </div>
     
     <div class="input-group" style="margin-bottom:0">
-      <label for="customFileNameInput">Nome do arquivo (.csv para Excel):</label>
+      <label for="customFileNameInput">Nome do arquivo (.xlsx para Excel):</label>
       <input type="text" id="customFileNameInput" value="Coleta" disabled />
     </div>
   </div>
@@ -417,7 +419,7 @@ footer strong { color: #60a5fa; }
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn-danger btn-sm" id="clearBtn" disabled>Limpar Tudo</button>
-        <button id="exportBtn" disabled>Exportar CSV / Excel</button>
+        <button id="exportBtn" disabled>Exportar Excel (.xlsx)</button>
       </div>
     </div>
 
@@ -471,7 +473,7 @@ footer strong { color: #60a5fa; }
     <details>
       <summary id="unknownSummary">⚠ EANs nao encontrados na base</summary>
       <div class="unknown-list" id="unknownList"></div>
-      <button class="btn-secondary btn-sm" id="exportUnknownBtn" style="margin-top:12px">Exportar Nao Encontrados</button>
+      <button class="btn-secondary btn-sm" id="exportUnknownBtn" style="margin-top:12px">Exportar Nao Encontrados (.xlsx)</button>
     </details>
   </div>
 
@@ -495,12 +497,12 @@ footer strong { color: #60a5fa; }
 
 <script>
 const $ = id => document.getElementById(id);
-const STORE = 'coletor_estoque_v5';
+const STORE = 'coletor_estoque_v6';
 
 let database = {};
 let productNames = {};
 let productExped = {};
-let productPrices = {}; // Armazena PRDP_VL_CMPG
+let productPrices = {}; 
 
 let counts = {};
 let unknown = {};    
@@ -509,32 +511,58 @@ let history = [];
 const sanitize = s => (s ?? '').toString().trim().replace(/^["'\ufeff]+|["'\ufeff]+$/g, '').trim();
 const normEan = s => sanitize(s).replace(/\D/g, '').replace(/^0+/, '');
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const csvCell = v => `"\t${String(v).replace(/"/g, '""')}"`;
 const formatMoney = val => `R$ ${val.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 let audioCtx;
-function beep(ok) {
+function beep(type) {
   if (!$('soundToggle').checked) return;
   try {
     audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
     if (audioCtx.state === 'suspended') audioCtx.resume();
-    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
     
-    if (ok) {
-      o.frequency.value = 1000;
+    const now = audioCtx.currentTime;
+
+    if (type === 'normal') {
+      // Bipe simples e limpo (Agudo curto)
+      const o = audioCtx.createOscillator(), g = audioCtx.createGain();
       o.type = 'sine';
-    } else {
-      o.frequency.value = 180;
+      o.frequency.setValueAtTime(1050, now);
+      o.connect(g); g.connect(audioCtx.destination);
+      g.gain.setValueAtTime(0.2, now);
+      g.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+      o.start(now); o.stop(now + 0.08);
+    } 
+    else if (type === 'enveloped') {
+      // Bipe duplo diferenciado para produtos envelopados (Aviso sonoro especial)
+      const o1 = audioCtx.createOscillator(), g1 = audioCtx.createGain();
+      o1.type = 'triangle';
+      o1.frequency.setValueAtTime(880, now);
+      o1.connect(g1); g1.connect(audioCtx.destination);
+      g1.gain.setValueAtTime(0.25, now);
+      g1.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+      o1.start(now); o1.stop(now + 0.09);
+
+      const o2 = audioCtx.createOscillator(), g2 = audioCtx.createGain();
+      o2.type = 'triangle';
+      o2.frequency.setValueAtTime(1320, now + 0.11);
+      o2.connect(g2); g2.connect(audioCtx.destination);
+      g2.gain.setValueAtTime(0.25, now + 0.11);
+      g2.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+      o2.start(now + 0.11); o2.stop(now + 0.22);
+    } 
+    else if (type === 'error') {
+      // Alerta de erro / não encontrado
+      const o = audioCtx.createOscillator(), g = audioCtx.createGain();
       o.type = 'sawtooth';
-    }
-    
-    o.connect(g); g.connect(audioCtx.destination);
-    g.gain.value = 0.2;
-    o.start(); 
-    o.stop(audioCtx.currentTime + (ok ? 0.08 : 0.3));
-    
-    if (!ok && window.navigator && navigator.vibrate) {
-      navigator.vibrate([150, 50, 150]);
+      o.frequency.setValueAtTime(180, now);
+      o.connect(g); g.connect(audioCtx.destination);
+      g.gain.setValueAtTime(0.25, now);
+      g.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+      o.start(now); o.stop(now + 0.3);
+      
+      if (window.navigator && navigator.vibrate) {
+        navigator.vibrate([150, 50, 150]);
+      }
     }
   } catch (e) {}
 }
@@ -700,13 +728,13 @@ function processFile(file) {
     if (loadedEans > 0) {
       setDbStatus('Base Atualizada e Salva', true);
       say(`Base carregada com sucesso (${loadedEans} EANs / ${Object.keys(productNames).length} SKUs).`, true);
-      beep(true);
+      beep('normal');
       save();
       updateTable();
     } else {
       setDbStatus('Erro ao ler base', false);
       say('Nenhum registro valido encontrado no arquivo selecionado.', false);
-      beep(false);
+      beep('error');
     }
   };
   reader.readAsText(file, 'UTF-8');
@@ -743,10 +771,10 @@ $('importBackupBtn').onclick = () => $('backupFile').click();$('backupFile').add
         setDbStatus('Backup Restaurado com Sucesso', true);
       }
       say('Backup restaurado com sucesso!', true);
-      beep(true);
+      beep('normal');
     } catch (err) {
       say('Erro ao ler arquivo de backup JSON.', false);
-      beep(false);
+      beep('error');
     }
     e.target.value = '';
   };
@@ -754,7 +782,6 @@ $('importBackupBtn').onclick = () => $('backupFile').click();$('backupFile').add
 });
 
 function registrar(code, ean, qty = 1) {
-  // Alterado aqui: isMultiplyOn agora começa como 'false' por padrão
   const c = counts[code] || (counts[code] = { count: 0, isMultiplyOn: false, lastEan: ean, ts: 0 });
   c.count = parseInt(c.count + qty, 10); 
   c.lastEan = ean; 
@@ -763,12 +790,15 @@ function registrar(code, ean, qty = 1) {
 }
 
 function processBarcode() {
-  const raw = sanitize($('barcodeInput').value);$('barcodeInput').value = '';
+  const inputEl = $('barcodeInput');
+  const raw = sanitize(inputEl.value);
+  inputEl.value = '';
+  inputEl.focus(); 
   if (!raw) return;
 
   if (!Object.keys(database).length) { 
     say('Atencao: Importe a base de dados (Passo 1) primeiro!', false); 
-    beep(false); 
+    beep('error'); 
     return; 
   }
 
@@ -787,26 +817,44 @@ function processBarcode() {
   }
 
   const key = normEan(cleanBarcode);
-  if (!key) { say('Codigo de barras invalido.', false); beep(false); return; }
+  if (!key) { say('Codigo de barras invalido.', false); beep('error'); return; }
 
   const code = database[key];
+  const exp = productExped[code] || 1;
+  const isEnv = exp > 1;
+  const envText = isEnv ? ` ⚠️ [ENVELOPADO - Cx c/ ${exp} UN]` : '';
+
   if (!code) {
     unknown[cleanBarcode] = (unknown[cleanBarcode] || 0) + qtyToAdd;
     say(`⚠ EAN ${cleanBarcode} NÃO LOCALIZADO NA BASE!`, false);
-    beep(false); save(); renderUnknown();
+    
+    const lb = $('lastBip');
+    lb.style.display = 'block';
+    lb.innerHTML = `<strong>NÃO CADASTRADO</strong> · EAN: ${esc(cleanBarcode)}`;
+
+    beep('error'); save(); renderUnknown();
     return;
   }
 
   registrar(code, cleanBarcode, qtyToAdd);
-  say(`✔ ${productNames[code] || code} — Qtd: ${counts[code].count}`, true);
+  say(`✔ ${productNames[code] || code} — Qtd: ${counts[code].count}${envText}`, true);
   
   const lb = $('lastBip');
   lb.style.display = 'block';
-  lb.innerHTML = `<strong>${esc(code)}</strong> · ${esc(productNames[code] || code)} · EAN ${esc(cleanBarcode)}`;
+  lb.innerHTML = `<strong>${esc(code)}</strong> · ${esc(productNames[code] || code)} · EAN ${esc(cleanBarcode)}${isEnv ? ` <span style="color:var(--warning);font-weight:700;">[ENVELOPADO Cx/${exp}]</span>` : ''}`;
   
-  beep(true); save(); updateTable(code);
+  // Toca som diferenciado se for envelopado
+  if (isEnv) {
+    beep('enveloped');
+  } else {
+    beep('normal');
+  }
+
+  save(); 
+  updateTable();
 }
-$('barcodeForm').addEventListener('submit', e => { e.preventDefault(); processBarcode(); });
+
+$('barcodeInput').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); processBarcode(); } });$('addBarcodeBtn').addEventListener('click', () => processBarcode());
 
 $('undoBtn').onclick = () => {
   const lastOp = history.pop();
@@ -837,6 +885,7 @@ function openModal({ title, desc, showInput = false, inputValue = '', confirmTex
 function closeModal() {
   $('customModal').classList.remove('active');
   onModalConfirm = null;
+  $('barcodeInput').focus();
 }
 
 function confirmModal() {
@@ -884,7 +933,7 @@ function visibleCols() {
   return cols;
 }
 
-function updateTable(flashCode) {
+function updateTable() {
   const cols = visibleCols();
   const showHeaders = $('headerToggle').checked;
 
@@ -971,15 +1020,6 @@ function updateTable(flashCode) {
         </button>
       </div></td></tr>`;
   }).join('');
-
-  if (flashCode) {
-    const updatedRow = $(`row-${flashCode}`);
-    if (updatedRow) {
-      updatedRow.classList.add('row-updated');
-      updatedRow.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      setTimeout(() => updatedRow.classList.remove('row-updated'), 800);
-    }
-  }
 }
 
 $('tableBody').addEventListener('change', e => {
@@ -988,7 +1028,7 @@ $('tableBody').addEventListener('change', e => {
     if (counts[code]) {
       counts[code].isMultiplyOn = e.target.checked;
       save();
-      updateTable(code);
+      updateTable();
     }
   }
 });
@@ -1003,19 +1043,20 @@ $('tableBody').addEventListener('click', e => {
     counts[code].count += 1; 
     counts[code].ts = Date.now(); 
     save(); 
-    updateTable(code); 
+    updateTable(); 
   }
   if (act === 'minus') {
     if (counts[code].count > 1) { 
       counts[code].count -= 1; 
       save(); 
-      updateTable(code); 
+      updateTable(); 
     } else {
       removerItem(code);
     }
   }
   if (act === 'edit') editarQtd(code);
   if (act === 'del') removerItem(code);
+  $('barcodeInput').focus();
 });
 
 function editarQtd(code) {
@@ -1033,7 +1074,7 @@ function editarQtd(code) {
         save(); updateTable();
       } else {
         counts[code].count = n;
-        save(); updateTable(code);
+        save(); updateTable();
       }
     }
   });
@@ -1138,15 +1179,6 @@ function removerUnknownItem(ean) {
   });
 }
 
-function download(content, name) {
-  const blob = new Blob(['\ufeff' + content], { type: 'text/csv;charset=utf-8;' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = name.endsWith('.csv') ? name : `${name}.csv`;
-  document.body.appendChild(a); a.click(); a.remove();
-  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-}
-
 function baseName() {
   if ($('customFileNameToggle').checked) {
     const val = $('customFileNameInput').value.trim();
@@ -1155,11 +1187,18 @@ function baseName() {
   return 'Coleta';
 }
 
+// Exportação otimizada para XLSX (Excel real) evitando problemas de espaços/delimitadores do CSV
 $('exportBtn').onclick = () => {
   const cols = visibleCols();
   if (!cols.length) { say('Marque ao menos uma coluna nas configuracoes para exportar.', false); return; }
-  let csv = '';
-  if ($('headerToggle').checked) csv += cols.map(c => c.exp).join(';') + '\n';
+  
+  const rows = [];
+  
+  // Cabeçalho se ativado
+  if ($('headerToggle').checked) {
+    rows.push(cols.map(c => c.exp));
+  }
+
   Object.keys(counts).forEach(code => {
     const exp = productExped[code] || 1;
     const isMul = counts[code].isMultiplyOn && exp > 1;
@@ -1167,24 +1206,36 @@ $('exportBtn').onclick = () => {
     const preco = productPrices[code] || 0;
     const valorTotal = totalUnidades * preco;
     
-    const v = {
-      code: csvCell(code), 
-      desc: `"${(productNames[code] || 'N/A').replace(/"/g, '""')}"`,
-      ean: csvCell(counts[code].lastEan), 
-      qty: parseInt(counts[code].count, 10), 
-      un: totalUnidades,
-      price: preco.toFixed(2).replace('.', ','),
-      totalVal: valorTotal.toFixed(2).replace('.', ',')
+    const rowData = {
+      code: String(code),
+      desc: String(productNames[code] || 'N/A'),
+      ean: String(counts[code].lastEan),
+      qty: parseInt(counts[code].count, 10),
+      un: parseInt(totalUnidades, 10),
+      price: parseFloat(preco.toFixed(2)),
+      totalVal: parseFloat(valorTotal.toFixed(2))
     };
-    csv += cols.map(c => v[c.id]).join(';') + '\n';
+
+    rows.push(cols.map(c => rowData[c.id]));
   });
-  download(csv, baseName());
+
+  const worksheet = XLSX.utils.aoa_to_sheet(rows);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Coleta");
+
+  const fileName = `${baseName()}.xlsx`;
+  XLSX.writeFile(workbook, fileName);
 };
 
 $('exportUnknownBtn').onclick = () => {
-  let csv = 'EAN;Vezes\n';
-  Object.keys(unknown).forEach(k => csv += `${csvCell(k)};${unknown[k]}\n`);
-  download(csv, `${baseName()}_nao_encontrados`);
+  const rows = [['EAN', 'Vezes']];
+  Object.keys(unknown).forEach(k => rows.push([String(k), unknown[k]]));
+
+  const worksheet = XLSX.utils.aoa_to_sheet(rows);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Nao_Encontrados");
+
+  XLSX.writeFile(workbook, `${baseName()}_nao_encontrados.xlsx`);
 };
 
 const customFileNameToggle = $('customFileNameToggle');
@@ -1204,6 +1255,7 @@ customFileNameToggle.addEventListener('change', function() {
 loadStorage();
 updateTable();
 renderUnknown();
+$('barcodeInput').focus();
 </script>
 </body>
 </html>
