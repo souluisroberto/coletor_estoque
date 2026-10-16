@@ -37,7 +37,7 @@ body {
 
 .container {
   width: 100%;
-  max-width: 980px;
+  max-width: 1050px;
   display: flex;
   flex-direction: column;
   gap: 18px;
@@ -197,7 +197,7 @@ button:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
 
 .kpi-container {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 12px;
   margin-bottom: 15px;
 }
@@ -215,8 +215,8 @@ button:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
 }
 
 .kpi-card::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--accent); }
-.kpi-label { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600; }
-.kpi-value { font-size: 1.4rem; font-weight: 800; color: #fff; }
+.kpi-label { font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600; }
+.kpi-value { font-size: 1.3rem; font-weight: 800; color: #fff; }
 
 .switch-label {
   display: inline-flex;
@@ -254,7 +254,7 @@ input:checked + .slider:before { transform: translateX(18px); background-color: 
 }
 
 .table-responsive { overflow-x: auto; border-radius: 8px; border: 1px solid var(--card-border); }
-table { width: 100%; border-collapse: collapse; min-width: 600px; background: var(--card-bg); }
+table { width: 100%; border-collapse: collapse; min-width: 700px; background: var(--card-bg); }
 th, td { text-align: left; padding: 12px 14px; border-bottom: 1px solid var(--card-border); font-size: 0.85rem; }
 th { color: var(--text-muted); background: var(--input-bg); font-weight: 600; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.5px; }
 
@@ -435,6 +435,10 @@ footer strong { color: #60a5fa; }
         <span class="kpi-label">Total Unidades Soltas</span>
         <span class="kpi-value" id="tUnidades">0</span>
       </div>
+      <div class="kpi-card">
+        <span class="kpi-label">Valor Total Financeiro</span>
+        <span class="kpi-value" id="tFinanceiro" style="color:#34d399">R$ 0,00</span>
+      </div>
     </div>
 
     <div class="column-controls">
@@ -443,6 +447,8 @@ footer strong { color: #60a5fa; }
       <label class="switch-label"><div class="switch"><input type="checkbox" id="colEanToggle" checked /><span class="slider"></span></div><span>Codigo de Barras</span></label>
       <label class="switch-label"><div class="switch"><input type="checkbox" id="colQtyToggle" checked /><span class="slider"></span></div><span>Quantidade</span></label>
       <label class="switch-label"><div class="switch"><input type="checkbox" id="colUnToggle" checked /><span class="slider"></span></div><span>Total UN</span></label>
+      <label class="switch-label"><div class="switch"><input type="checkbox" id="colPriceToggle" checked /><span class="slider"></span></div><span>Vlr Unitário (R$)</span></label>
+      <label class="switch-label"><div class="switch"><input type="checkbox" id="colTotalValToggle" checked /><span class="slider"></span></div><span>Vlr Total (R$)</span></label>
       <label class="switch-label" style="grid-column:1/-1;border-top:1px solid var(--card-border);padding-top:10px">
         <div class="switch"><input type="checkbox" id="headerToggle" checked /><span class="slider"></span></div>
         <span><strong>Incluir titulos das colunas no arquivo gerado e na tela</strong></span>
@@ -489,11 +495,12 @@ footer strong { color: #60a5fa; }
 
 <script>
 const $ = id => document.getElementById(id);
-const STORE = 'coletor_estoque_v4';
+const STORE = 'coletor_estoque_v5';
 
 let database = {};
 let productNames = {};
 let productExped = {};
+let productPrices = {}; // Armazena PRDP_VL_CMPG
 
 let counts = {};
 let unknown = {};    
@@ -503,6 +510,7 @@ const sanitize = s => (s ?? '').toString().trim().replace(/^["'\ufeff]+|["'\ufef
 const normEan = s => sanitize(s).replace(/\D/g, '').replace(/^0+/, '');
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const csvCell = v => `"\t${String(v).replace(/"/g, '""')}"`;
+const formatMoney = val => `R$ ${val.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 let audioCtx;
 function beep(ok) {
@@ -516,7 +524,7 @@ function beep(ok) {
       o.frequency.value = 1000;
       o.type = 'sine';
     } else {
-      o.frequency.value = 180; // Tom mais grave para erro
+      o.frequency.value = 180;
       o.type = 'sawtooth';
     }
     
@@ -545,7 +553,8 @@ function save() {
       history: history.slice(-300),
       database,
       productNames,
-      productExped
+      productExped,
+      productPrices
     }));
   } catch (e) {}
 }
@@ -561,6 +570,7 @@ function loadStorage() {
       database = data.database || {};
       productNames = data.productNames || {};
       productExped = data.productExped || {};
+      productPrices = data.productPrices || {};
 
       if (Object.keys(database).length > 0) {
         setDbStatus('Base Carregada (Salva no Navegador)', true);
@@ -601,6 +611,7 @@ function processFile(file) {
     database = {};
     productNames = {};
     productExped = {};
+    productPrices = {};
     let loadedEans = 0;
 
     if (file.name.toLowerCase().endsWith('.xml') || text.trim().startsWith('<')) {
@@ -617,11 +628,13 @@ function processFile(file) {
           const code = rawDv ? `${rawCode}-${rawDv}` : rawCode;
           const desc = sanitize(node.getAttribute("PRME_TX_DESCRICAO1") || code);
           const exped = parseInt(sanitize(node.getAttribute("PRDP_QT_EMBEXPED")), 10) || 1;
+          const price = parseFloat(sanitize(node.getAttribute("PRDP_VL_CMPG")).replace(',', '.')) || 0.0;
 
           if (ean && rawCode) {
             database[ean] = code;
             productNames[code] = desc;
             productExped[code] = exped;
+            productPrices[code] = price;
             loadedEans++;
           }
         }
@@ -642,12 +655,13 @@ function processFile(file) {
             code: cols.indexOf('PRME_CD_PRODUTO'),
             dv: cols.indexOf('PRME_NR_DV'),
             desc: cols.indexOf('PRME_TX_DESCRICAO1'),
-            exped: cols.indexOf('PRDP_QT_EMBEXPED')
+            exped: cols.indexOf('PRDP_QT_EMBEXPED'),
+            price: cols.indexOf('PRDP_VL_CMPG')
           };
           return;
         }
 
-        let ean = '', rawCode = '', rawDv = '', code = '', desc = '', exped = 1;
+        let ean = '', rawCode = '', rawDv = '', code = '', desc = '', exped = 1, price = 0.0;
         if (headerIndices && headerIndices.ean !== -1 && headerIndices.code !== -1) {
           ean = normEan(cols[headerIndices.ean]);
           rawCode = sanitize(cols[headerIndices.code]);
@@ -655,6 +669,7 @@ function processFile(file) {
           code = rawDv ? `${rawCode}-${rawDv}` : rawCode;
           desc = headerIndices.desc !== -1 ? sanitize(cols[headerIndices.desc]) : code;
           exped = headerIndices.exped !== -1 ? (parseInt(sanitize(cols[headerIndices.exped]), 10) || 1) : 1;
+          price = headerIndices.price !== -1 ? (parseFloat(sanitize(cols[headerIndices.price]).replace(',', '.')) || 0.0) : 0.0;
         } else if (cols.length >= 17) {
           ean = normEan(cols[15]);
           rawCode = sanitize(cols[0]);
@@ -662,18 +677,21 @@ function processFile(file) {
           code = rawDv ? `${rawCode}-${rawDv}` : rawCode;
           desc = sanitize(cols[2]);
           exped = parseInt(sanitize(cols[6]), 10) || 1;
+          price = parseFloat(sanitize(cols[14]).replace(',', '.')) || 0.0;
         } else if (cols.length >= 2) {
           ean = normEan(cols[0]);
           rawCode = sanitize(cols[1]);
           code = rawCode;
           desc = cols[2] ? sanitize(cols[2]) : code;
           exped = 1;
+          price = 0.0;
         }
 
         if (ean && rawCode) {
           database[ean] = code;
           productNames[code] = desc;
           productExped[code] = exped;
+          productPrices[code] = price;
           loadedEans++;
         }
       });
@@ -694,9 +712,8 @@ function processFile(file) {
   reader.readAsText(file, 'UTF-8');
 }
 
-// Botões de Backup Completo (.json)
 $('exportBackupBtn').onclick = () => {
-  const data = JSON.stringify({ counts, unknown, history, database, productNames, productExped });
+  const data = JSON.stringify({ counts, unknown, history, database, productNames, productExped, productPrices });
   const blob = new Blob([data], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -718,6 +735,7 @@ $('importBackupBtn').onclick = () => $('backupFile').click();$('backupFile').add
       database = data.database || {};
       productNames = data.productNames || {};
       productExped = data.productExped || {};
+      productPrices = data.productPrices || {};
       save();
       updateTable();
       renderUnknown();
@@ -860,6 +878,8 @@ function visibleCols() {
   if ($('colEanToggle').checked) cols.push({ id: 'ean', title: 'Ultimo EAN Bipado', exp: 'Codigo de Barras' });
   if ($('colQtyToggle').checked) cols.push({ id: 'qty', title: 'Quantidade Solta', exp: 'Quantidade' });
   if ($('colUnToggle').checked) cols.push({ id: 'un', title: 'Total UN', exp: 'Total Unidades' });
+  if ($('colPriceToggle').checked) cols.push({ id: 'price', title: 'Vlr Unitário', exp: 'Valor Unitario' });
+  if ($('colTotalValToggle').checked) cols.push({ id: 'totalVal', title: 'Vlr Total (R$)', exp: 'Valor Total' });
   return cols;
 }
 
@@ -885,10 +905,18 @@ function updateTable(flashCode) {
     const isMul = counts[k].isMultiplyOn && exp > 1;
     return s + (isMul ? counts[k].count * exp : counts[k].count);
   }, 0);
+
+  const totalFinanceiro = all.reduce((s, k) => {
+    const exp = productExped[k] || 1;
+    const isMul = counts[k].isMultiplyOn && exp > 1;
+    const unLinha = isMul ? counts[k].count * exp : counts[k].count;
+    const preco = productPrices[k] || 0;
+    return s + (unLinha * preco);
+  }, 0);
   
   $('tProdutos').textContent = all.length;
-  $('tBips').textContent = parseInt(totalBips, 10);
-  $('tUnidades').textContent = parseInt(totalUnidades, 10);$('exportBtn').disabled = !all.length;
+  $('tBips').textContent = parseInt(totalBips, 10);$('tUnidades').textContent = parseInt(totalUnidades, 10);
+  $('tFinanceiro').textContent = formatMoney(totalFinanceiro);$('exportBtn').disabled = !all.length;
   $('clearBtn').disabled = !all.length;
   $('undoBtn').disabled = !history.length;
 
@@ -903,6 +931,8 @@ function updateTable(flashCode) {
     const isMul = counts[code].isMultiplyOn && env;
     const totalUnidadesLinha = isMul ? parseInt(counts[code].count * exp, 10) : parseInt(counts[code].count, 10);
     const qtyExibida = parseInt(counts[code].count, 10);
+    const precoUnitario = productPrices[code] || 0;
+    const valorTotalLinha = totalUnidadesLinha * precoUnitario;
     
     const badge = env ? `<span class="badge-env" title="Produto Envelopado - Embalagem Padrao: ${exp} UN"><svg style="width:12px;height:12px;fill:currentColor" viewBox="0 0 24 24"><path d="M20 8l-8-5-8 5v8l8 5 8-5V8zm-8-2.75L16.8 8 12 10.75 7.2 8 12 5.25zM6 14.75V9.92l5 2.81v4.97l-5-2.95zm12 0l-5 2.95v-4.97l5-2.81v4.83z"/></svg> ENVELOPADO (Cx c/ ${exp} UN)</span>` : '';
     
@@ -918,7 +948,9 @@ function updateTable(flashCode) {
       desc: `<td>${esc(productNames[code] || 'N/A')} ${badge}</td>`,
       ean: `<td>${esc(counts[code].lastEan)}</td>`,
       qty: `<td class="count">${qtyExibida}</td>`,
-      un: `<td>${totalUnidadesLinha}</td>`
+      un: `<td>${totalUnidadesLinha}</td>`,
+      price: `<td>${formatMoney(precoUnitario)}</td>`,
+      totalVal: `<td><strong style="color:#34d399">${formatMoney(valorTotalLinha)}</strong></td>`
     };
     return `<tr id="row-${esc(code)}" class="${env ? 'row-env' : ''}">
       ${cols.map(c => cell[c.id]).join('')}
@@ -1023,7 +1055,7 @@ $('clearBtn').onclick = () => openModal({
 });
 
 $('searchInput').addEventListener('input', () => updateTable());
-['colCodeToggle', 'colDescToggle', 'colEanToggle', 'colQtyToggle', 'colUnToggle', 'headerToggle'].forEach(id =>
+['colCodeToggle', 'colDescToggle', 'colEanToggle', 'colQtyToggle', 'colUnToggle', 'colPriceToggle', 'colTotalValToggle', 'headerToggle'].forEach(id =>
   $(id).addEventListener('change', () => { updateTable(); }));
 
 function renderUnknown() {
@@ -1131,13 +1163,17 @@ $('exportBtn').onclick = () => {
     const exp = productExped[code] || 1;
     const isMul = counts[code].isMultiplyOn && exp > 1;
     const totalUnidades = isMul ? parseInt(counts[code].count * exp, 10) : parseInt(counts[code].count, 10);
+    const preco = productPrices[code] || 0;
+    const valorTotal = totalUnidades * preco;
     
     const v = {
       code: csvCell(code), 
       desc: `"${(productNames[code] || 'N/A').replace(/"/g, '""')}"`,
       ean: csvCell(counts[code].lastEan), 
       qty: parseInt(counts[code].count, 10), 
-      un: totalUnidades
+      un: totalUnidades,
+      price: preco.toFixed(2).replace('.', ','),
+      totalVal: valorTotal.toFixed(2).replace('.', ',')
     };
     csv += cols.map(c => v[c.id]).join(';') + '\n';
   });
