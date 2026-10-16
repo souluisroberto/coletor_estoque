@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -126,7 +127,7 @@ input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-gl
 input:disabled { opacity: 0.4; cursor: not-allowed; }
 
 .barcode-form { display: flex; gap: 10px; }
-.barcode-form button { padding: 0 22px; font-size: 1.3rem; display: flex; align-items: center; justify-content: center; }
+.barcode-form button { padding: 0 22px; font-size: 1.3rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 
 button {
   background: var(--accent);
@@ -367,10 +368,10 @@ footer strong { color: #60a5fa; }
     </div>
 
     <div class="input-group" style="margin-bottom:0">
-      <label for="barcodeInput">EAN do Produto (Ex: 10*EAN):</label>
+      <label for="barcodeInput">EAN do Produto (Digite ou Bipe):</label>
       <div class="barcode-form">
-        <input type="text" id="barcodeInput" inputmode="numeric" placeholder="Toque para digitar ou bipe..." autocomplete="off" />
-        <button type="button" id="addBarcodeBtn">+</button>
+        <input type="text" id="barcodeInput" inputmode="numeric" placeholder="Digite o EAN ou use o leitor..." autocomplete="off" />
+        <button type="button" id="addBarcodeBtn" title="Adicionar / Enviar EAN">+</button>
       </div>
       <div id="feedback"></div>
       <div class="last-bip" id="lastBip"></div>
@@ -523,7 +524,6 @@ function beep(type) {
     const now = audioCtx.currentTime;
 
     if (type === 'normal') {
-      // Bipe simples e limpo (Agudo curto)
       const o = audioCtx.createOscillator(), g = audioCtx.createGain();
       o.type = 'sine';
       o.frequency.setValueAtTime(1050, now);
@@ -533,7 +533,6 @@ function beep(type) {
       o.start(now); o.stop(now + 0.08);
     } 
     else if (type === 'enveloped') {
-      // Bipe duplo diferenciado para produtos envelopados (Aviso sonoro especial)
       const o1 = audioCtx.createOscillator(), g1 = audioCtx.createGain();
       o1.type = 'triangle';
       o1.frequency.setValueAtTime(880, now);
@@ -551,7 +550,6 @@ function beep(type) {
       o2.start(now + 0.11); o2.stop(now + 0.22);
     } 
     else if (type === 'error') {
-      // Alerta de erro / não encontrado
       const o = audioCtx.createOscillator(), g = audioCtx.createGain();
       o.type = 'sawtooth';
       o.frequency.setValueAtTime(180, now);
@@ -843,7 +841,6 @@ function processBarcode() {
   lb.style.display = 'block';
   lb.innerHTML = `<strong>${esc(code)}</strong> · ${esc(productNames[code] || code)} · EAN ${esc(cleanBarcode)}${isEnv ? ` <span style="color:var(--warning);font-weight:700;">[ENVELOPADO Cx/${exp}]</span>` : ''}`;
   
-  // Toca som diferenciado se for envelopado
   if (isEnv) {
     beep('enveloped');
   } else {
@@ -854,7 +851,30 @@ function processBarcode() {
   updateTable();
 }
 
-$('barcodeInput').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); processBarcode(); } });$('addBarcodeBtn').addEventListener('click', () => processBarcode());
+// Disparo automático instantâneo ao colar ou usar pistola rápida
+let typingTimer;
+$('barcodeInput').addEventListener('input', () => {
+  clearTimeout(typingTimer);
+  const val = $('barcodeInput').value;
+  // Se for uma colagem ou pistola rápida com o código completo, dispara sozinho
+  if (val.length >= 8) {
+    typingTimer = setTimeout(() => {
+      processBarcode();
+    }, 120); 
+  }
+});
+
+// Tecla Enter ou clique no botão "+" enviam imediatamente
+$('barcodeInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    processBarcode();
+  }
+});
+
+$('addBarcodeBtn').addEventListener('click', () => {
+  processBarcode();
+});
 
 $('undoBtn').onclick = () => {
   const lastOp = history.pop();
@@ -1187,14 +1207,11 @@ function baseName() {
   return 'Coleta';
 }
 
-// Exportação otimizada para XLSX (Excel real) evitando problemas de espaços/delimitadores do CSV
 $('exportBtn').onclick = () => {
   const cols = visibleCols();
   if (!cols.length) { say('Marque ao menos uma coluna nas configuracoes para exportar.', false); return; }
   
   const rows = [];
-  
-  // Cabeçalho se ativado
   if ($('headerToggle').checked) {
     rows.push(cols.map(c => c.exp));
   }
@@ -1223,8 +1240,7 @@ $('exportBtn').onclick = () => {
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, "Coleta");
 
-  const fileName = `${baseName()}.xlsx`;
-  XLSX.writeFile(workbook, fileName);
+  XLSX.writeFile(workbook, `${baseName()}.xlsx`);
 };
 
 $('exportUnknownBtn').onclick = () => {
