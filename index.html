@@ -754,7 +754,8 @@ $('importBackupBtn').onclick = () => $('backupFile').click();$('backupFile').add
 });
 
 function registrar(code, ean, qty = 1) {
-  const c = counts[code] || (counts[code] = { count: 0, isMultiplyOn: true, lastEan: ean, ts: 0 });
+  // Alterado aqui: isMultiplyOn agora começa como 'false' por padrão
+  const c = counts[code] || (counts[code] = { count: 0, isMultiplyOn: false, lastEan: ean, ts: 0 });
   c.count = parseInt(c.count + qty, 10); 
   c.lastEan = ean; 
   c.ts = Date.now();
