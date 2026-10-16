@@ -1,0 +1,1172 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Coletor de Estoque CD - Pague Menos & Extrafarma</title>
+<style>
+:root {
+  --bg: #0a0e17;
+  --card-bg: #121824;
+  --card-border: #1e293b;
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --accent: #0052cc;
+  --accent-glow: rgba(0, 82, 204, 0.3);
+  --accent-hover: #0043a8;
+  --danger: #e30613;
+  --danger-glow: rgba(227, 6, 19, 0.25);
+  --danger-hover: #c4030f;
+  --warning: #ffc107;
+  --warning-bg: rgba(255, 193, 7, 0.1);
+  --input-bg: #090d14;
+  --btn-secondary: #1e293b;
+  --btn-secondary-hover: #334155;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+
+body {
+  background-color: var(--bg);
+  color: var(--text-main);
+  padding: 20px 15px;
+  display: flex;
+  justify-content: center;
+  min-height: 100vh;
+}
+
+.container {
+  width: 100%;
+  max-width: 980px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  transition: border-color 0.2s ease;
+}
+
+.card:focus-within { border-color: var(--accent); }
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.card-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.card-title svg { width: 22px; height: 22px; fill: #3b82f6; }
+
+h2 { font-size: 1.05rem; font-weight: 600; letter-spacing: 0.3px; color: #fff; }
+
+.db-link-icon {
+  color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  border-radius: 8px;
+  background: var(--btn-secondary);
+  border: 1px solid var(--card-border);
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+.db-link-icon:hover {
+  color: #3b82f6;
+  background: var(--btn-secondary-hover);
+  border-color: #3b82f6;
+  box-shadow: 0 0 12px var(--accent-glow);
+}
+.db-link-icon svg { width: 18px; height: 18px; fill: currentColor; }
+
+.input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+label {
+  font-size: 0.8rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+}
+
+input[type="file"], input[type="text"], input[type="number"], input[type="search"] {
+  background: var(--input-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  color: #fff;
+  font-size: 0.95rem;
+  outline: none;
+  width: 100%;
+  transition: all 0.2s ease;
+}
+
+input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+input:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.barcode-form { display: flex; gap: 10px; }
+.barcode-form button { padding: 0 22px; font-size: 1.3rem; display: flex; align-items: center; justify-content: center; }
+
+button {
+  background: var(--accent);
+  color: #fff;
+  border: 0;
+  border-radius: 8px;
+  padding: 11px 18px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+button:hover { background: var(--accent-hover); box-shadow: 0 0 14px var(--accent-glow); }
+button:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
+
+.btn-secondary { background: var(--btn-secondary); color: var(--text-main); border: 1px solid var(--card-border); }
+.btn-secondary:hover { background: var(--btn-secondary-hover); border-color: var(--text-muted); box-shadow: none; }
+
+.btn-danger { background: var(--danger); color: #fff; }
+.btn-danger:hover { background: var(--danger-hover); box-shadow: 0 0 14px var(--danger-glow); }
+
+.btn-sm { padding: 8px 14px; font-size: 0.8rem; }
+
+.status-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.85rem;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding-top: 6px;
+}
+
+.badge {
+  background: #1e293b;
+  border: 1px solid var(--card-border);
+  color: var(--text-muted);
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+#feedback {
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 8px 12px;
+  border-radius: 6px;
+  display: none;
+  margin-top: 8px;
+}
+#feedback.ok { display: block; background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); }
+#feedback.err { display: block; background: rgba(227, 6, 19, 0.2); color: #f87171; border: 1px solid rgba(227, 6, 19, 0.4); }
+
+.last-bip {
+  background: var(--input-bg);
+  border: 1px solid var(--card-border);
+  border-left: 4px solid var(--accent);
+  border-radius: 6px;
+  padding: 10px 14px;
+  font-size: 0.85rem;
+  margin-top: 10px;
+  display: none;
+}
+
+.kpi-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 15px;
+}
+
+.kpi-card {
+  background: var(--input-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  position: relative;
+  overflow: hidden;
+}
+
+.kpi-card::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--accent); }
+.kpi-label { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600; }
+.kpi-value { font-size: 1.4rem; font-weight: 800; color: #fff; }
+
+.switch-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: var(--text-main);
+  user-select: none;
+}
+
+.switch { position: relative; display: inline-block; width: 38px; height: 20px; flex-shrink: 0; }
+.switch input { opacity: 0; width: 0; height: 0; }
+.slider {
+  position: absolute; cursor: pointer; inset: 0;
+  background-color: var(--card-border);
+  transition: .2s; border-radius: 20px;
+}
+.slider:before {
+  position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px;
+  background-color: white; transition: .2s; border-radius: 50%;
+}
+input:checked + .slider { background-color: var(--accent); }
+input:checked + .slider:before { transform: translateX(18px); background-color: #fff; }
+
+.column-controls {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  background: var(--input-bg);
+  padding: 14px;
+  border-radius: 8px;
+  border: 1px solid var(--card-border);
+  margin-bottom: 15px;
+}
+
+.table-responsive { overflow-x: auto; border-radius: 8px; border: 1px solid var(--card-border); }
+table { width: 100%; border-collapse: collapse; min-width: 600px; background: var(--card-bg); }
+th, td { text-align: left; padding: 12px 14px; border-bottom: 1px solid var(--card-border); font-size: 0.85rem; }
+th { color: var(--text-muted); background: var(--input-bg); font-weight: 600; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.5px; }
+
+tr { transition: background-color 0.4s ease; }
+tr:last-child td { border-bottom: none; }
+tr.row-updated { background-color: rgba(0, 82, 204, 0.25) !important; }
+
+.count { font-weight: 700; color: #60a5fa; font-size: 1rem; }
+tr.row-env { background: var(--warning-bg); }
+tr.row-env td:first-child { border-left: 3px solid var(--warning); }
+
+.badge-env {
+  background: var(--warning);
+  color: #000;
+  font-size: 0.7rem;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.action-btn-group { display: flex; gap: 8px; align-items: center; justify-content: center; }
+
+.action-btn {
+  background: var(--btn-secondary);
+  border: 1px solid var(--card-border);
+  color: var(--text-muted);
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 0;
+}
+.action-btn svg { width: 15px; height: 15px; fill: currentColor; }
+.action-btn:hover { background: var(--btn-secondary-hover); color: #fff; border-color: var(--text-muted); }
+.action-btn.delete:hover { background: rgba(227, 6, 19, 0.2); border-color: var(--danger); color: #f87171; }
+
+.unknown-list { margin-top: 10px; font-size: 0.85rem; display: flex; flex-direction: column; gap: 6px; }
+.unknown-item { display: flex; justify-content: space-between; align-items: center; background: var(--input-bg); padding: 8px 12px; border-radius: 6px; border: 1px solid var(--card-border); }
+
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0, 0, 0, 0.85);
+  display: flex; justify-content: center; align-items: center;
+  z-index: 1000; opacity: 0; visibility: hidden;
+  transition: all 0.2s ease; backdrop-filter: blur(5px);
+}
+.modal-overlay.active { opacity: 1; visibility: visible; }
+
+.modal-card {
+  background: var(--card-bg); border: 1px solid var(--card-border);
+  border-radius: 12px; width: 90%; max-width: 420px; padding: 22px;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+}
+.modal-card h3 { font-size: 1.1rem; color: #fff; margin-bottom: 8px; }
+.modal-card p { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 16px; line-height: 1.4; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
+
+details summary { cursor: pointer; color: var(--warning); font-size: 0.9rem; font-weight: 600; user-select: none; }
+
+footer { text-align: center; padding: 20px 0 10px; color: var(--text-muted); font-size: 0.8rem; }
+footer strong { color: #60a5fa; }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- Bloco 1 -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">
+        <svg viewBox="0 0 24 24"><path d="M19 12v7H5v-7H3v7c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-7h-2zm-6 .67l2.59-2.58L17 11.5l-5 5-5-5 1.41-1.41L11 12.67V3h2v9.67z"/></svg>
+        <h2>1. Base de Dados de Estoque (CSV, XML, TXT)</h2>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn-secondary btn-sm" id="exportBackupBtn" title="Salvar backup completo em arquivo JSON">Baixar Backup</button>
+        <button class="btn-secondary btn-sm" id="importBackupBtn" title="Restaurar backup anterior">Restaurar Backup</button>
+        <input type="file" id="backupFile" accept=".json" style="display:none" />
+        <a class="db-link-icon" target="_blank" title="Acessar servidor de relatorios" href="https://relatorios.pmenos.com.br/portal/report/Cosmos/Log%C3%ADstica/Estoque_CD">
+          <svg viewBox="0 0 24 24"><path d="M12 3C7.58 3 4 4.79 4 7v10c0 2.21 3.58 4 8 4s8-1.79 8-4V7c0-2.21-3.58-4-8-4zm0 2c3.87 0 6 1.3 6 2s-2.13 2-6 2-6-1.3-6-2 2.13-2 6-2zm0 14c-3.87 0-6-1.3-6-2v-2.16c1.47.74 3.63 1.16 6 1.16s4.53-.42 6-1.16V17c0 .7-2.13 2-6 2zm0-5c-3.87 0-6-1.3-6-2v-2.16c1.47.74 3.63 1.16 6 1.16s4.53-.42 6-1.16V12c0 .7-2.13 2-6 2z"/></svg>
+        </a>
+      </div>
+    </div>
+    <div class="input-group">
+      <label for="dbFile">Selecione o arquivo Estoque_CD:</label>
+      <input type="file" id="dbFile" accept=".csv,.xml,.txt" />
+    </div>
+    <div class="status-bar">
+      <span>Status: <strong id="dbStatus" style="color:var(--danger)">Nenhuma base carregada</strong></span>
+      <span class="badge" id="totalItems">0 codigos carregados</span>
+    </div>
+  </div>
+
+  <!-- Bloco 2 -->
+  <div class="card">
+    <div class="card-header" style="margin-bottom:10px;">
+      <div class="card-title">
+        <svg viewBox="0 0 24 24"><path d="M2 6h2v12H2zm3 0h1v12H5zm2 0h3v12H7zm4 0h1v12h-1zm3 0h2v12h-2zm3 0h1v12h-1zm2 0h3v12h-3z"/></svg>
+        <h2>2. Bipar ou Digitar Codigo de Barras</h2>
+      </div>
+    </div>
+
+    <div class="input-group" style="margin-bottom:0">
+      <label for="barcodeInput">EAN do Produto (Ex: 10*EAN):</label>
+      <form id="barcodeForm" class="barcode-form" action="javascript:void(0);">
+        <input type="text" id="barcodeInput" inputmode="numeric" placeholder="Toque para digitar ou bipe..." autocomplete="off" />
+        <button type="submit">+</button>
+      </form>
+      <div id="feedback"></div>
+      <div class="last-bip" id="lastBip"></div>
+      <div class="card-header" style="margin-top:12px; margin-bottom:0;">
+        <label class="switch-label">
+          <div class="switch"><input type="checkbox" id="soundToggle" checked /><span class="slider"></span></div>
+          <span>Bip Sonoro</span>
+        </label>
+        <button class="btn-secondary btn-sm" id="undoBtn" disabled title="Atalho: F2 ou Ctrl+Z">
+          <svg style="width:14px;height:14px;fill:currentColor" viewBox="0 0 24 24"><path d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z"/></svg>
+          Desfazer (F2)
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bloco 3 -->
+  <div class="card">
+    <div class="card-header" style="margin-bottom:8px">
+      <div class="card-title">
+        <svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+        <h2>3. Configuracao do Arquivo de Saida</h2>
+      </div>
+    </div>
+    
+    <div class="switch-label" style="margin-bottom:12px">
+      <label class="switch">
+        <input type="checkbox" id="customFileNameToggle" />
+        <span class="slider"></span>
+      </label>
+      <span for="customFileNameToggle">Nome do arquivo personalizado</span>
+    </div>
+    
+    <div class="input-group" style="margin-bottom:0">
+      <label for="customFileNameInput">Nome do arquivo (.csv para Excel):</label>
+      <input type="text" id="customFileNameInput" value="Coleta" disabled />
+    </div>
+  </div>
+
+  <!-- Bloco 4 -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">
+        <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14zM7 10h2v7H7zm4-3h2v10h-2zm4 6h2v4h-2z"/></svg>
+        <h2>4. Resumo da Contagem</h2>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn-danger btn-sm" id="clearBtn" disabled>Limpar Tudo</button>
+        <button id="exportBtn" disabled>Exportar CSV / Excel</button>
+      </div>
+    </div>
+
+    <!-- KPIs -->
+    <div class="kpi-container">
+      <div class="kpi-card">
+        <span class="kpi-label">Produtos Diferentes</span>
+        <span class="kpi-value" id="tProdutos">0</span>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-label">Total Caixas / Lidos</span>
+        <span class="kpi-value" id="tBips">0</span>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-label">Total Unidades Soltas</span>
+        <span class="kpi-value" id="tUnidades">0</span>
+      </div>
+    </div>
+
+    <div class="column-controls">
+      <label class="switch-label"><div class="switch"><input type="checkbox" id="colCodeToggle" checked /><span class="slider"></span></div><span>Codigo Interno</span></label>
+      <label class="switch-label"><div class="switch"><input type="checkbox" id="colDescToggle" checked /><span class="slider"></span></div><span>Descricao</span></label>
+      <label class="switch-label"><div class="switch"><input type="checkbox" id="colEanToggle" checked /><span class="slider"></span></div><span>Codigo de Barras</span></label>
+      <label class="switch-label"><div class="switch"><input type="checkbox" id="colQtyToggle" checked /><span class="slider"></span></div><span>Quantidade</span></label>
+      <label class="switch-label"><div class="switch"><input type="checkbox" id="colUnToggle" checked /><span class="slider"></span></div><span>Total UN</span></label>
+      <label class="switch-label" style="grid-column:1/-1;border-top:1px solid var(--card-border);padding-top:10px">
+        <div class="switch"><input type="checkbox" id="headerToggle" checked /><span class="slider"></span></div>
+        <span><strong>Incluir titulos das colunas no arquivo gerado e na tela</strong></span>
+      </label>
+    </div>
+
+    <div class="input-group">
+      <input type="search" id="searchInput" placeholder="🔍 Buscar por codigo, EAN ou descricao no resumo..." />
+    </div>
+
+    <div class="table-responsive">
+      <table>
+        <thead id="tableHeader"></thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card" id="unknownCard" style="display:none">
+    <details>
+      <summary id="unknownSummary">⚠ EANs nao encontrados na base</summary>
+      <div class="unknown-list" id="unknownList"></div>
+      <button class="btn-secondary btn-sm" id="exportUnknownBtn" style="margin-top:12px">Exportar Nao Encontrados</button>
+    </details>
+  </div>
+
+  <footer>Desenvolvido por <strong>Luis Roberto dos Anjos Braga</strong></footer>
+</div>
+
+<div class="modal-overlay" id="customModal">
+  <div class="modal-card">
+    <h3 id="modalTitle">Atencao</h3>
+    <p id="modalDesc">Descricao da acao...</p>
+
+    <div id="modalInputContainer" class="input-group" style="display:none">
+      <input type="number" id="modalInput" min="0" step="1" pattern="\d*" />
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" id="modalCancelBtn">Cancelar</button>
+      <button id="modalConfirmBtn">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const STORE = 'coletor_estoque_v4';
+
+let database = {};
+let productNames = {};
+let productExped = {};
+
+let counts = {};
+let unknown = {};    
+let history = [];    
+
+const sanitize = s => (s ?? '').toString().trim().replace(/^["'\ufeff]+|["'\ufeff]+$/g, '').trim();
+const normEan = s => sanitize(s).replace(/\D/g, '').replace(/^0+/, '');
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const csvCell = v => `"\t${String(v).replace(/"/g, '""')}"`;
+
+let audioCtx;
+function beep(ok) {
+  if (!$('soundToggle').checked) return;
+  try {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    
+    if (ok) {
+      o.frequency.value = 1000;
+      o.type = 'sine';
+    } else {
+      o.frequency.value = 180; // Tom mais grave para erro
+      o.type = 'sawtooth';
+    }
+    
+    o.connect(g); g.connect(audioCtx.destination);
+    g.gain.value = 0.2;
+    o.start(); 
+    o.stop(audioCtx.currentTime + (ok ? 0.08 : 0.3));
+    
+    if (!ok && window.navigator && navigator.vibrate) {
+      navigator.vibrate([150, 50, 150]);
+    }
+  } catch (e) {}
+}
+
+function say(msg, ok) {
+  const f = $('feedback');
+  f.textContent = msg;
+  f.className = ok ? 'ok' : 'err';
+}
+
+function save() {
+  try {
+    localStorage.setItem(STORE, JSON.stringify({ 
+      counts, 
+      unknown, 
+      history: history.slice(-300),
+      database,
+      productNames,
+      productExped
+    }));
+  } catch (e) {}
+}
+
+function loadStorage() {
+  try {
+    const raw = localStorage.getItem(STORE);
+    if (raw) {
+      const data = JSON.parse(raw);
+      counts = data.counts || {};
+      unknown = data.unknown || {};
+      history = data.history || [];
+      database = data.database || {};
+      productNames = data.productNames || {};
+      productExped = data.productExped || {};
+
+      if (Object.keys(database).length > 0) {
+        setDbStatus('Base Carregada (Salva no Navegador)', true);
+      }
+    }
+  } catch(e) {}
+}
+
+let pendingFileProcess = null;
+
+$('dbFile').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  if (Object.keys(database).length > 0) {
+    pendingFileProcess = file;
+    openModal({
+      title: 'Substituir Base de Dados?',
+      desc: 'Já existe uma base de dados ativa. Deseja substituir a base antiga pela nova?',
+      confirmText: 'Sim, Substituir',
+      isDanger: true,
+      onConfirm: () => {
+        processFile(pendingFileProcess);
+        pendingFileProcess = null;
+      }
+    });
+    e.target.value = '';
+  } else {
+    processFile(file);
+    e.target.value = '';
+  }
+});
+
+function processFile(file) {
+  const reader = new FileReader();
+  reader.onload = function(evt) {
+    const text = evt.target.result;
+    database = {};
+    productNames = {};
+    productExped = {};
+    let loadedEans = 0;
+
+    if (file.name.toLowerCase().endsWith('.xml') || text.trim().startsWith('<')) {
+      try {
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(text, "text/xml");
+        const detalhes = xmlDoc.getElementsByTagName("Detalhes");
+        
+        for (let i = 0; i < detalhes.length; i++) {
+          const node = detalhes[i];
+          const ean = normEan(node.getAttribute("COBA_CD_BARRA"));
+          const rawCode = sanitize(node.getAttribute("PRME_CD_PRODUTO"));
+          const rawDv = sanitize(node.getAttribute("PRME_NR_DV"));
+          const code = rawDv ? `${rawCode}-${rawDv}` : rawCode;
+          const desc = sanitize(node.getAttribute("PRME_TX_DESCRICAO1") || code);
+          const exped = parseInt(sanitize(node.getAttribute("PRDP_QT_EMBEXPED")), 10) || 1;
+
+          if (ean && rawCode) {
+            database[ean] = code;
+            productNames[code] = desc;
+            productExped[code] = exped;
+            loadedEans++;
+          }
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    } else {
+      const lines = text.split(/\r?\n/);
+      let headerIndices = null;
+
+      lines.forEach((line, idx) => {
+        if (!line.trim()) return;
+        const cols = line.split('|').map(c => c.trim());
+        
+        if (idx === 0 || (!headerIndices && cols.includes('COBA_CD_BARRA'))) {
+          headerIndices = {
+            ean: cols.indexOf('COBA_CD_BARRA'),
+            code: cols.indexOf('PRME_CD_PRODUTO'),
+            dv: cols.indexOf('PRME_NR_DV'),
+            desc: cols.indexOf('PRME_TX_DESCRICAO1'),
+            exped: cols.indexOf('PRDP_QT_EMBEXPED')
+          };
+          return;
+        }
+
+        let ean = '', rawCode = '', rawDv = '', code = '', desc = '', exped = 1;
+        if (headerIndices && headerIndices.ean !== -1 && headerIndices.code !== -1) {
+          ean = normEan(cols[headerIndices.ean]);
+          rawCode = sanitize(cols[headerIndices.code]);
+          rawDv = headerIndices.dv !== -1 ? sanitize(cols[headerIndices.dv]) : '';
+          code = rawDv ? `${rawCode}-${rawDv}` : rawCode;
+          desc = headerIndices.desc !== -1 ? sanitize(cols[headerIndices.desc]) : code;
+          exped = headerIndices.exped !== -1 ? (parseInt(sanitize(cols[headerIndices.exped]), 10) || 1) : 1;
+        } else if (cols.length >= 17) {
+          ean = normEan(cols[15]);
+          rawCode = sanitize(cols[0]);
+          rawDv = sanitize(cols[1]);
+          code = rawDv ? `${rawCode}-${rawDv}` : rawCode;
+          desc = sanitize(cols[2]);
+          exped = parseInt(sanitize(cols[6]), 10) || 1;
+        } else if (cols.length >= 2) {
+          ean = normEan(cols[0]);
+          rawCode = sanitize(cols[1]);
+          code = rawCode;
+          desc = cols[2] ? sanitize(cols[2]) : code;
+          exped = 1;
+        }
+
+        if (ean && rawCode) {
+          database[ean] = code;
+          productNames[code] = desc;
+          productExped[code] = exped;
+          loadedEans++;
+        }
+      });
+    }
+
+    if (loadedEans > 0) {
+      setDbStatus('Base Atualizada e Salva', true);
+      say(`Base carregada com sucesso (${loadedEans} EANs / ${Object.keys(productNames).length} SKUs).`, true);
+      beep(true);
+      save();
+      updateTable();
+    } else {
+      setDbStatus('Erro ao ler base', false);
+      say('Nenhum registro valido encontrado no arquivo selecionado.', false);
+      beep(false);
+    }
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+// Botões de Backup Completo (.json)
+$('exportBackupBtn').onclick = () => {
+  const data = JSON.stringify({ counts, unknown, history, database, productNames, productExped });
+  const blob = new Blob([data], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `Backup_Coletor_${new Date().toISOString().slice(0,10)}.json`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+};
+
+$('importBackupBtn').onclick = () => $('backupFile').click();$('backupFile').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(evt) {
+    try {
+      const data = JSON.parse(evt.target.result);
+      counts = data.counts || {};
+      unknown = data.unknown || {};
+      history = data.history || [];
+      database = data.database || {};
+      productNames = data.productNames || {};
+      productExped = data.productExped || {};
+      save();
+      updateTable();
+      renderUnknown();
+      if (Object.keys(database).length > 0) {
+        setDbStatus('Backup Restaurado com Sucesso', true);
+      }
+      say('Backup restaurado com sucesso!', true);
+      beep(true);
+    } catch (err) {
+      say('Erro ao ler arquivo de backup JSON.', false);
+      beep(false);
+    }
+    e.target.value = '';
+  };
+  reader.readAsText(file, 'UTF-8');
+});
+
+function registrar(code, ean, qty = 1) {
+  const c = counts[code] || (counts[code] = { count: 0, isMultiplyOn: true, lastEan: ean, ts: 0 });
+  c.count = parseInt(c.count + qty, 10); 
+  c.lastEan = ean; 
+  c.ts = Date.now();
+  history.push({ code, qty }); 
+}
+
+function processBarcode() {
+  const raw = sanitize($('barcodeInput').value);$('barcodeInput').value = '';
+  if (!raw) return;
+
+  if (!Object.keys(database).length) { 
+    say('Atencao: Importe a base de dados (Passo 1) primeiro!', false); 
+    beep(false); 
+    return; 
+  }
+
+  let qtyToAdd = 1;
+  let cleanBarcode = raw;
+
+  if (raw.includes('*') || raw.toLowerCase().includes('x')) {
+    const parts = raw.toLowerCase().split(/[*x]/);
+    if (parts.length === 2) {
+      const parsedQty = parseInt(parts[0].trim(), 10);
+      if (!isNaN(parsedQty) && parsedQty > 0) {
+        qtyToAdd = parsedQty;
+        cleanBarcode = parts[1].trim();
+      }
+    }
+  }
+
+  const key = normEan(cleanBarcode);
+  if (!key) { say('Codigo de barras invalido.', false); beep(false); return; }
+
+  const code = database[key];
+  if (!code) {
+    unknown[cleanBarcode] = (unknown[cleanBarcode] || 0) + qtyToAdd;
+    say(`⚠ EAN ${cleanBarcode} NÃO LOCALIZADO NA BASE!`, false);
+    beep(false); save(); renderUnknown();
+    return;
+  }
+
+  registrar(code, cleanBarcode, qtyToAdd);
+  say(`✔ ${productNames[code] || code} — Qtd: ${counts[code].count}`, true);
+  
+  const lb = $('lastBip');
+  lb.style.display = 'block';
+  lb.innerHTML = `<strong>${esc(code)}</strong> · ${esc(productNames[code] || code)} · EAN ${esc(cleanBarcode)}`;
+  
+  beep(true); save(); updateTable(code);
+}
+$('barcodeForm').addEventListener('submit', e => { e.preventDefault(); processBarcode(); });
+
+$('undoBtn').onclick = () => {
+  const lastOp = history.pop();
+  if (!lastOp) { updateTable(); return; }
+  const { code, qty } = typeof lastOp === 'object' ? lastOp : { code: lastOp, qty: 1 };
+  
+  if (counts[code]) {
+    counts[code].count = parseInt(counts[code].count - qty, 10);
+    if (counts[code].count <= 0) delete counts[code];
+    say('Ultima leitura removida.', true);
+    save(); updateTable();
+  }
+};
+
+let onModalConfirm = null;
+function openModal({ title, desc, showInput = false, inputValue = '', confirmText = 'Confirmar', isDanger = false, onConfirm }) {
+  $('modalTitle').textContent = title;
+  $('modalDesc').textContent = desc;
+  $('modalInputContainer').style.display = showInput ? 'block' : 'none';
+  if (showInput) { 
+    $('modalInput').value = inputValue; 
+    setTimeout(() => { $('modalInput').focus(); $('modalInput').select(); }, 100); }$('modalConfirmBtn').textContent = confirmText;
+  $('modalConfirmBtn').className = isDanger ? 'btn-danger' : '';
+  onModalConfirm = onConfirm;
+  $('customModal').classList.add('active');
+}
+
+function closeModal() {
+  $('customModal').classList.remove('active');
+  onModalConfirm = null;
+}
+
+function confirmModal() {
+  if (onModalConfirm) {
+    const isInputVisible = $('modalInputContainer').style.display !== 'none';
+    const val = isInputVisible ? $('modalInput').value : true;
+    onModalConfirm(val);
+  }
+  closeModal();
+}
+
+$('modalCancelBtn').onclick = closeModal;
+$('modalConfirmBtn').onclick = confirmModal;
+
+document.addEventListener('keydown', e => {
+  if ($('customModal').classList.contains('active')) {
+    if (e.key === 'Enter') { e.preventDefault(); confirmModal(); }
+    if (e.key === 'Escape') closeModal();
+    return;
+  }
+  if (e.key === 'F2' || (e.ctrlKey && e.key.toLowerCase() === 'z')) {
+    e.preventDefault();
+    if (!$('undoBtn').disabled)$('undoBtn').click();
+  }
+  if (e.key === 'Escape' && document.activeElement === $('searchInput')) {$('searchInput').value = '';
+    updateTable();
+  }
+});
+
+function setDbStatus(msg, ok) {
+  $('dbStatus').textContent = msg;
+  $('dbStatus').style.color = ok ? '#3b82f6' : '#e30613';
+  $('totalItems').textContent = `${Object.keys(database).length} eans mapeados (${Object.keys(productNames).length} skus)`;
+}
+
+function visibleCols() {
+  const cols = [];
+  if ($('colCodeToggle').checked) cols.push({ id: 'code', title: 'Codigo Interno', exp: 'Codigo Interno' });
+  if ($('colDescToggle').checked) cols.push({ id: 'desc', title: 'Descricao do Produto', exp: 'Descricao' });
+  if ($('colEanToggle').checked) cols.push({ id: 'ean', title: 'Ultimo EAN Bipado', exp: 'Codigo de Barras' });
+  if ($('colQtyToggle').checked) cols.push({ id: 'qty', title: 'Quantidade Solta', exp: 'Quantidade' });
+  if ($('colUnToggle').checked) cols.push({ id: 'un', title: 'Total UN', exp: 'Total Unidades' });
+  return cols;
+}
+
+function updateTable(flashCode) {
+  const cols = visibleCols();
+  const showHeaders = $('headerToggle').checked;
+
+  if (showHeaders) {
+    $('tableHeader').style.display = '';$('tableHeader').innerHTML = `<tr>${cols.map(c => `<th>${c.title}</th>`).join('')}<th style="text-align:center;width:150px">Acoes</th></tr>`;
+  } else {
+    $('tableHeader').style.display = 'none';$('tableHeader').innerHTML = '';
+  }
+
+  const q = $('searchInput').value.trim().toLowerCase();
+  const keys = Object.keys(counts)
+    .filter(k => !q || k.toLowerCase().includes(q) || (productNames[k] || '').toLowerCase().includes(q) || (counts[k].lastEan || '').includes(q))
+    .sort((a, b) => counts[b].ts - counts[a].ts);
+
+  const all = Object.keys(counts);
+  const totalBips = all.reduce((s, k) => s + counts[k].count, 0);
+  const totalUnidades = all.reduce((s, k) => {
+    const exp = productExped[k] || 1;
+    const isMul = counts[k].isMultiplyOn && exp > 1;
+    return s + (isMul ? counts[k].count * exp : counts[k].count);
+  }, 0);
+  
+  $('tProdutos').textContent = all.length;
+  $('tBips').textContent = parseInt(totalBips, 10);
+  $('tUnidades').textContent = parseInt(totalUnidades, 10);$('exportBtn').disabled = !all.length;
+  $('clearBtn').disabled = !all.length;
+  $('undoBtn').disabled = !history.length;
+
+  if (!keys.length) {
+    $('tableBody').innerHTML = `<tr><td colspan="${cols.length + 1}" style="text-align:center;color:var(--text-muted);padding:20px">${all.length ? 'Nenhum item encontrado no filtro digitado.' : 'Nenhum item bipado ate o momento.'}</td></tr>`;
+    return;
+  }
+
+  $('tableBody').innerHTML = keys.map(code => {
+    const exp = productExped[code] || 1;
+    const env = exp > 1;
+    const isMul = counts[code].isMultiplyOn && env;
+    const totalUnidadesLinha = isMul ? parseInt(counts[code].count * exp, 10) : parseInt(counts[code].count, 10);
+    const qtyExibida = parseInt(counts[code].count, 10);
+    
+    const badge = env ? `<span class="badge-env" title="Produto Envelopado - Embalagem Padrao: ${exp} UN"><svg style="width:12px;height:12px;fill:currentColor" viewBox="0 0 24 24"><path d="M20 8l-8-5-8 5v8l8 5 8-5V8zm-8-2.75L16.8 8 12 10.75 7.2 8 12 5.25zM6 14.75V9.92l5 2.81v4.97l-5-2.95zm12 0l-5 2.95v-4.97l5-2.81v4.83z"/></svg> ENVELOPADO (Cx c/ ${exp} UN)</span>` : '';
+    
+    const switchHtml = env ? `
+      <label class="switch" title="${isMul ? 'Multiplicador Ativado' : 'Multiplicador Desativado'}">
+        <input type="checkbox" class="row-multiply-toggle" data-code="${esc(code)}" ${isMul ? 'checked' : ''} />
+        <span class="slider"></span>
+      </label>
+    ` : '';
+
+    const cell = {
+      code: `<td><strong>${esc(code)}</strong></td>`,
+      desc: `<td>${esc(productNames[code] || 'N/A')} ${badge}</td>`,
+      ean: `<td>${esc(counts[code].lastEan)}</td>`,
+      qty: `<td class="count">${qtyExibida}</td>`,
+      un: `<td>${totalUnidadesLinha}</td>`
+    };
+    return `<tr id="row-${esc(code)}" class="${env ? 'row-env' : ''}">
+      ${cols.map(c => cell[c.id]).join('')}
+      <td><div class="action-btn-group">
+        ${switchHtml}
+        <button class="action-btn" data-act="minus" data-code="${esc(code)}" title="Diminuir 1">
+          <svg viewBox="0 0 24 24"><path d="M19 13H5v-2h14v2z"/></svg>
+        </button>
+        <button class="action-btn" data-act="plus" data-code="${esc(code)}" title="Aumentar 1">
+          <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+        </button>
+        <button class="action-btn" data-act="edit" data-code="${esc(code)}" title="Editar Quantidade">
+          <svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+        </button>
+        <button class="action-btn delete" data-act="del" data-code="${esc(code)}" title="Excluir Item">
+          <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+        </button>
+      </div></td></tr>`;
+  }).join('');
+
+  if (flashCode) {
+    const updatedRow = $(`row-${flashCode}`);
+    if (updatedRow) {
+      updatedRow.classList.add('row-updated');
+      updatedRow.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      setTimeout(() => updatedRow.classList.remove('row-updated'), 800);
+    }
+  }
+}
+
+$('tableBody').addEventListener('change', e => {
+  if (e.target.classList.contains('row-multiply-toggle')) {
+    const code = e.target.dataset.code;
+    if (counts[code]) {
+      counts[code].isMultiplyOn = e.target.checked;
+      save();
+      updateTable(code);
+    }
+  }
+});
+
+$('tableBody').addEventListener('click', e => {
+  const b = e.target.closest('button[data-act]');
+  if (!b) return;
+  const code = b.dataset.code, act = b.dataset.act;
+  if (!counts[code]) return;
+  
+  if (act === 'plus') { 
+    counts[code].count += 1; 
+    counts[code].ts = Date.now(); 
+    save(); 
+    updateTable(code); 
+  }
+  if (act === 'minus') {
+    if (counts[code].count > 1) { 
+      counts[code].count -= 1; 
+      save(); 
+      updateTable(code); 
+    } else {
+      removerItem(code);
+    }
+  }
+  if (act === 'edit') editarQtd(code);
+  if (act === 'del') removerItem(code);
+});
+
+function editarQtd(code) {
+  openModal({
+    title: 'Editar Quantidade Exata',
+    desc: `Digite a quantidade para (${productNames[code] || code}):`,
+    showInput: true,
+    inputValue: parseInt(counts[code].count, 10),
+    confirmText: 'Salvar Alteracao',
+    onConfirm: val => {
+      let n = parseInt(val, 10);
+      if (isNaN(n) || n < 0) return;
+      if (n === 0) {
+        delete counts[code];
+        save(); updateTable();
+      } else {
+        counts[code].count = n;
+        save(); updateTable(code);
+      }
+    }
+  });
+}
+
+function removerItem(code) {
+  openModal({
+    title: 'Remover Item',
+    desc: `Deseja remover "${productNames[code] || code}" da contagem atual?`,
+    confirmText: 'Excluir', isDanger: true,
+    onConfirm: () => { delete counts[code]; save(); updateTable(); }
+  });
+}
+
+$('clearBtn').onclick = () => openModal({
+  title: 'Limpar Toda a Contagem',
+  desc: 'Atencao! Esta acao apaga todas as contagens registradas. Deseja continuar?',
+  confirmText: 'Limpar Tudo', isDanger: true,
+  onConfirm: () => { counts = {}; unknown = {}; history = []; $('lastBip').style.display = 'none'; say('', true); save(); updateTable(); renderUnknown(); }
+});
+
+$('searchInput').addEventListener('input', () => updateTable());
+['colCodeToggle', 'colDescToggle', 'colEanToggle', 'colQtyToggle', 'colUnToggle', 'headerToggle'].forEach(id =>
+  $(id).addEventListener('change', () => { updateTable(); }));
+
+function renderUnknown() {
+  const keys = Object.keys(unknown);
+  $('unknownCard').style.display = keys.length ? 'block' : 'none';
+  $('unknownSummary').textContent = `⚠ ${keys.length} EAN(s) nao encontrados na base`;
+  $('unknownList').innerHTML = keys.map(k => `
+    <div class="unknown-item">
+      <span style="font-weight:600;color:#fff">${esc(k)}</span>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span class="count">${unknown[k]}x</span>
+        <div class="action-btn-group">
+          <button class="action-btn" data-act="uk-minus" data-ean="${esc(k)}" title="Diminuir 1">
+            <svg viewBox="0 0 24 24"><path d="M19 13H5v-2h14v2z"/></svg>
+          </button>
+          <button class="action-btn" data-act="uk-plus" data-ean="${esc(k)}" title="Aumentar 1">
+            <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+          </button>
+          <button class="action-btn" data-act="uk-edit" data-ean="${esc(k)}" title="Editar Quantidade">
+            <svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+          </button>
+          <button class="action-btn delete" data-act="uk-del" data-ean="${esc(k)}" title="Excluir Item Nao Encontrado">
+            <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+$('unknownList').addEventListener('click', e => {
+  const b = e.target.closest('button[data-act]');
+  if (!b) return;
+  const ean = b.dataset.ean, act = b.dataset.act;
+  if (!unknown[ean]) return;
+
+  if (act === 'uk-plus') {
+    unknown[ean] += 1;
+    save(); renderUnknown();
+  }
+  if (act === 'uk-minus') {
+    if (unknown[ean] > 1) {
+      unknown[ean] -= 1;
+      save(); renderUnknown();
+    } else {
+      removerUnknownItem(ean);
+    }
+  }
+  if (act === 'uk-edit') {
+    openModal({
+      title: 'Editar Quantidade (Não Encontrado)',
+      desc: `Digite a quantidade exata para o EAN (${ean}):`,
+      showInput: true,
+      inputValue: unknown[ean],
+      confirmText: 'Salvar',
+      onConfirm: val => {
+        let n = parseInt(val, 10);
+        if (isNaN(n) || n < 0) return;
+        if (n === 0) {
+          delete unknown[ean];
+        } else {
+          unknown[ean] = n;
+        }
+        save(); renderUnknown();
+      }
+    });
+  }
+  if (act === 'uk-del') {
+    removerUnknownItem(ean);
+  }
+});
+
+function removerUnknownItem(ean) {
+  openModal({
+    title: 'Remover EAN Desconhecido',
+    desc: `Deseja remover o EAN "${ean}" da lista de não encontrados?`,
+    confirmText: 'Excluir', isDanger: true,
+    onConfirm: () => { delete unknown[ean]; save(); renderUnknown(); }
+  });
+}
+
+function download(content, name) {
+  const blob = new Blob(['\ufeff' + content], { type: 'text/csv;charset=utf-8;' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name.endsWith('.csv') ? name : `${name}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+function baseName() {
+  if ($('customFileNameToggle').checked) {
+    const val = $('customFileNameInput').value.trim();
+    return val ? val.replace(/[\\/:*?"<>|]/g, '_') : 'Coleta';
+  }
+  return 'Coleta';
+}
+
+$('exportBtn').onclick = () => {
+  const cols = visibleCols();
+  if (!cols.length) { say('Marque ao menos uma coluna nas configuracoes para exportar.', false); return; }
+  let csv = '';
+  if ($('headerToggle').checked) csv += cols.map(c => c.exp).join(';') + '\n';
+  Object.keys(counts).forEach(code => {
+    const exp = productExped[code] || 1;
+    const isMul = counts[code].isMultiplyOn && exp > 1;
+    const totalUnidades = isMul ? parseInt(counts[code].count * exp, 10) : parseInt(counts[code].count, 10);
+    
+    const v = {
+      code: csvCell(code), 
+      desc: `"${(productNames[code] || 'N/A').replace(/"/g, '""')}"`,
+      ean: csvCell(counts[code].lastEan), 
+      qty: parseInt(counts[code].count, 10), 
+      un: totalUnidades
+    };
+    csv += cols.map(c => v[c.id]).join(';') + '\n';
+  });
+  download(csv, baseName());
+};
+
+$('exportUnknownBtn').onclick = () => {
+  let csv = 'EAN;Vezes\n';
+  Object.keys(unknown).forEach(k => csv += `${csvCell(k)};${unknown[k]}\n`);
+  download(csv, `${baseName()}_nao_encontrados`);
+};
+
+const customFileNameToggle = $('customFileNameToggle');
+const customFileNameInput = $('customFileNameInput');
+
+customFileNameToggle.addEventListener('change', function() {
+  const isChecked = this.checked;
+  customFileNameInput.disabled = !isChecked;
+  if (isChecked) {
+    customFileNameInput.focus();
+    customFileNameInput.select();
+  } else {
+    customFileNameInput.value = 'Coleta';
+  }
+});
+
+loadStorage();
+updateTable();
+renderUnknown();
+</script>
+</body>
+</html>
